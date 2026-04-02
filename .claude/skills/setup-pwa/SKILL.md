@@ -1,0 +1,311 @@
+---
+name: setup-pwa
+description: Sets up Progressive Web App (PWA) support for Vite + React projects using vite-plugin-pwa. Handles service worker, manifest, icons, caching, and update notifications. Use when the user asks to add PWA, make app installable, enable offline support, add service worker, or convert to PWA.
+---
+
+# Set Up PWA (Vite + React)
+
+## Overview
+
+Adds PWA support to a Vite + React project using `vite-plugin-pwa`. Generates a service worker, web manifest, offline caching, and an update notification component.
+
+## When to Use
+
+- Adding installable app support to a Vite + React project
+- Enabling offline functionality
+- Adding service worker and web manifest
+
+## Resume Detection
+
+If `vite.config.ts` already contains `VitePWA` and `src/vite-env.d.ts` declares `virtual:pwa-register/react`, PWA is already set up. Skip to **Step 7 (Verification)**.
+
+## Prerequisites
+
+- Vite + React project with `vite.config.ts`
+- `public/` directory for static assets
+- PWA icons (see Step 3 for required sizes)
+
+## Installation Steps
+
+### 1. Install vite-plugin-pwa
+
+```bash
+npm install -D vite-plugin-pwa
+```
+
+### 2. Configure Vite Plugin
+
+Add `VitePWA` to `vite.config.ts`. **Adapt these values to the project:**
+
+- `name` / `short_name` / `description` — from project context
+- `theme_color` / `background_color` — match the app's primary background color
+- `runtimeCaching.urlPattern` — match the project's API domain (examples below)
+
+```typescript
+import { VitePWA } from "vite-plugin-pwa";
+
+// Add to plugins array:
+VitePWA({
+  registerType: "autoUpdate",
+  includeAssets: ["favicon.ico", "apple-touch-icon.png"],
+  manifest: {
+    name: "APP_NAME",           // Full app name
+    short_name: "SHORT_NAME",   // Home screen label
+    description: "APP_DESCRIPTION",
+    theme_color: "#XXXXXX",     // Match app's primary background
+    background_color: "#XXXXXX", // Splash screen background
+    display: "standalone",
+    orientation: "portrait",
+    scope: "/",
+    start_url: "/",
+    icons: [
+      {
+        src: "pwa-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        src: "pwa-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+      {
+        src: "pwa-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any maskable",
+      },
+    ],
+  },
+  workbox: {
+    globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+    runtimeCaching: [
+      {
+        // ADAPT: Match the project's API domain
+        urlPattern: /^https:\/\/YOUR_API_DOMAIN\/.*/i,
+        handler: "NetworkFirst",
+        options: {
+          cacheName: "api-cache",
+          expiration: {
+            maxEntries: 50,
+            maxAgeSeconds: 60 * 60 * 24,
+          },
+          cacheableResponse: {
+            statuses: [0, 200],
+          },
+        },
+      },
+    ],
+  },
+  devOptions: {
+    enabled: true,
+    type: "module",
+  },
+})
+```
+
+**Common API patterns for `urlPattern`:**
+
+| Backend        | Pattern                                            |
+|----------------|----------------------------------------------------|
+| Convex         | `/^https:\/\/.*\.convex\.cloud\/.*/i`              |
+| Firebase       | `/^https:\/\/firestore\.googleapis\.com\/.*/i`     |
+| Supabase       | `/^https:\/\/.*\.supabase\.co\/.*/i`               |
+| Custom REST    | `/^https:\/\/api\.yourdomain\.com\/.*/i`           |
+| No external API| Remove `runtimeCaching` entirely                   |
+
+### 3. Prepare Icons
+
+Required icon files in `public/`:
+
+| File                  | Size    | Purpose                    |
+|-----------------------|---------|----------------------------|
+| `favicon.ico`         | 16-48px | Browser tab icon           |
+| `pwa-192x192.png`     | 192px   | Android icon               |
+| `pwa-512x512.png`     | 512px   | Install prompt / splash    |
+| `apple-touch-icon.png`| 180px   | iOS home screen            |
+
+**If the user already has icons in a subfolder** (e.g. `public/favicon_io/`):
+
+```bash
+cp public/favicon_io/android-chrome-192x192.png public/pwa-192x192.png
+cp public/favicon_io/android-chrome-512x512.png public/pwa-512x512.png
+cp public/favicon_io/apple-touch-icon.png public/apple-touch-icon.png
+```
+
+Then remove the subfolder: `rm -rf public/favicon_io`
+
+**If no icons exist**, tell the user to generate them at [favicon.io](https://favicon.io/) or [realfavicongenerator.net](https://realfavicongenerator.net/) and place them in `public/`.
+
+### 4. Update index.html
+
+Add these tags inside `<head>`. Preserve existing tags.
+
+```html
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<meta name="theme-color" content="#XXXXXX" />
+<meta name="description" content="APP_DESCRIPTION" />
+<link rel="manifest" href="/manifest.webmanifest" />
+```
+
+**Notes:**
+- `theme-color` must match `theme_color` in the manifest config
+- `manifest.webmanifest` is auto-generated by the plugin — do not create this file manually
+- Remove any existing `<link rel="manifest">` pointing to a static file
+
+### 5. Add TypeScript Declaration
+
+Append to `src/vite-env.d.ts` (create if missing):
+
+```typescript
+declare module "virtual:pwa-register/react" {
+  export interface RegisterSWOptions {
+    immediate?: boolean;
+    onNeedRefresh?: () => void;
+    onOfflineReady?: () => void;
+    onRegistered?: (registration: ServiceWorkerRegistration | undefined) => void;
+    onRegisterError?: (error: any) => void;
+  }
+
+  export function useRegisterSW(options?: RegisterSWOptions): {
+    needRefresh: [boolean, (value: boolean) => void];
+    offlineReady: [boolean, (value: boolean) => void];
+    updateServiceWorker: (reloadPage?: boolean) => Promise<void>;
+  };
+}
+```
+
+This resolves `Cannot find module 'virtual:pwa-register/react'`. The module is virtual (generated at build time by the plugin); TypeScript needs this declaration to type-check imports.
+
+### 6. Create Update Notification Component
+
+Create `src/components/PWAUpdatePrompt.tsx`:
+
+```tsx
+import { useRegisterSW } from "virtual:pwa-register/react";
+
+export function PWAUpdatePrompt() {
+  const {
+    offlineReady: [offlineReady, setOfflineReady],
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegistered(r: ServiceWorkerRegistration | undefined) {
+      console.log("SW Registered: " + r);
+    },
+    onRegisterError(error: Error) {
+      console.log("SW registration error", error);
+    },
+  });
+
+  const close = () => {
+    setOfflineReady(false);
+    setNeedRefresh(false);
+  };
+
+  if (!offlineReady && !needRefresh) return null;
+
+  return (
+    <div className="fixed bottom-4 left-4 right-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg z-50">
+      <div className="flex items-center justify-between">
+        <div>
+          {offlineReady ? (
+            <span>App ready to work offline</span>
+          ) : (
+            <span>New content available, click on reload button to update</span>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {needRefresh && (
+            <button
+              onClick={() => updateServiceWorker(true)}
+              className="px-4 py-2 bg-white text-blue-600 rounded font-semibold"
+            >
+              Reload
+            </button>
+          )}
+          <button onClick={close} className="px-4 py-2 bg-blue-700 rounded">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+**Adapt styling** to match the project's design system (Tailwind classes above assume Tailwind is available). If not using Tailwind, convert to inline styles or CSS modules.
+
+Then add `<PWAUpdatePrompt />` to the root component (e.g. `App.tsx`), outside any auth guards so it renders globally:
+
+```tsx
+import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
+
+// Inside the root return:
+<>
+  {/* existing app content */}
+  <PWAUpdatePrompt />
+</>
+```
+
+### 7. Verification
+
+Run the dev server and verify in browser DevTools → Application tab:
+
+```bash
+npm run dev
+```
+
+**Check these in DevTools → Application:**
+- **Service Workers**: Registered and running
+- **Manifest**: Shows app name, icons, display mode
+- **Open** `http://localhost:5173/manifest.webmanifest` — should return JSON
+
+**Production test:**
+
+```bash
+npm run build && npm run preview
+```
+
+- Install prompt appears in address bar (Chrome/Edge)
+- App works offline (Network tab → check "Offline" → refresh)
+- App opens in standalone mode when installed
+
+## File Structure After Setup
+
+```
+project/
+├── public/
+│   ├── favicon.ico
+│   ├── pwa-192x192.png
+│   ├── pwa-512x512.png
+│   └── apple-touch-icon.png
+├── src/
+│   ├── vite-env.d.ts          # virtual module declaration
+│   └── components/
+│       └── PWAUpdatePrompt.tsx # update notification
+├── index.html                 # PWA meta tags
+└── vite.config.ts             # VitePWA plugin
+```
+
+## Troubleshooting
+
+### Service worker not registering
+- Hard refresh: `Ctrl+Shift+R` / `Cmd+Shift+R`
+- Clear storage: DevTools → Application → Clear site data
+- Check console for errors
+
+### Install prompt not appearing
+- PWAs require HTTPS (except `localhost`)
+- Some browsers need user interaction first
+- Test with production build: `npm run build && npm run preview`
+
+### TypeScript error on virtual module
+- Ensure `vite-env.d.ts` has the `declare module "virtual:pwa-register/react"` block
+- Ensure `vite-env.d.ts` is included in your tsconfig (`"include": ["src"]`)
+
+### OAuth / auth not working in installed PWA
+- The installed PWA runs at the same origin as the browser
+- OAuth redirect URIs must include the origin (e.g. `http://localhost:5173`)
+- Google OAuth popups may be blocked — check console for errors

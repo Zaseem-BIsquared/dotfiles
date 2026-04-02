@@ -1,0 +1,50 @@
+# Dotfiles: allowlist approach — ignore everything (*), un-ignore (!) tracked files.
+
+# ── Ignore everything by default ──
+*
+
+# ── Repo meta ──
+!.cfg-ignore          # this file
+!README.md
+!setup.sh
+
+# ── Claude Code ──
+# Must un-ignore parent dirs first, then contents
+!.claude/
+!.claude/CLAUDE.md
+!.claude/settings.json
+!.claude/statusline.sh
+
+!.claude/skills/
+!.claude/skills/bugfix-pr-workflow/
+!.claude/skills/bugfix-pr-workflow/**
+!.claude/skills/debug-issue/
+!.claude/skills/debug-issue/**
+!.claude/skills/receive-review/
+!.claude/skills/receive-review/**
+!.claude/skills/request-review/
+!.claude/skills/request-review/**
+!.claude/skills/setup-pwa/
+!.claude/skills/setup-pwa/**
+
+# ── Re-ignore junk inside un-ignored trees ──
+.DS_Store
+*.bak
+
+# ── Intentionally NOT tracked ──
+# feather-flow/        — npm package (npm install -g feather-flow)
+# get-shit-done/       — npm package (npm install -g get-shit-done-cc)
+# commands/gsd/        — installed by GSD
+# hooks/gsd-*.js       — installed by GSD
+# plugins/             — installed marketplace
+# skills/feather:*/    — installed by feather-flow
+# skills/add-convex-auth-testing/ — installed from feather-testing-convex
+# skills/find-skills/  — installed from vercel-labs/skills
+# skills/setup-convex-testing/    — installed from feather-testing-convex
+# skills/review-convex-tests/     — installed from feather-testing-convex
+
+# ── Runtime data (never track) ──
+# debug/, telemetry/, cache/, backups/, projects/, todos/,
+# history.jsonl, stats-cache.json, gsd-file-manifest.json,
+# shell-snapshots/, sessions/, tasks/, plans/, statsig/,
+# file-history/, paste-cache/, .search_cache/, session-env/
