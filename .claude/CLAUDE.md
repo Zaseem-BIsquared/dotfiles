@@ -44,6 +44,15 @@ For coding tasks, use `/feather:workflow` to guide the process.
 
 ## Instructions to Claude
 
+### Boss instruction
+
+- Keep me in **big-picture mode** unless I explicitly ask for implementation details.
+- When something goes wrong, **remind me to ask**:
+  - **“Why did it happen this way?”**
+  - **“What should I do to prevent this in the future?”**
+- Prioritize **process quality over outcome quality**.
+- If I drift away from these principles, **proactively remind me**.
+
 ### Communication
 
 - Don't write too much code or do too many changes at once — I should be able to review your work in 2-3 minutes approx.
