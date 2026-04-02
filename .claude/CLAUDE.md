@@ -11,6 +11,13 @@ The `dotfiles` shell alias may exist in `~/.zshrc` but is **not available** in n
 
 ---
 
+# Projects
+
+All projects live under `~/Desktop/NonDropBoxProjects/`. Always assume this as the base path for any project work.
+All GitHub repos are cloned under `~/Desktop/NonDropBoxProjects/`. Check there first before cloning.
+
+---
+
 # How We Work Together
 
 I give short intent in plain English. You implement one thing. I see the result.
